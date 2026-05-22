@@ -1,7 +1,4 @@
-# Dự Án Nhóm — Vòng Giả Lập (Simulation Round)
 
-Robot Walker S2 | Mô Phỏng Vật Lý (Physics Simulation) | Cuộc Thi Robot Humanoid
-Đội Dự Án — Chương Trình Huấn Luyện Kỹ Thuật
 
 ---
 
@@ -357,3 +354,4 @@ observe()
 | Tài Sản Cuộc Thi (Assets) | https://huggingface.co/\<org\>/\<assets\> |
 | Tài Liệu Simulator | \<link tài liệu simulator\> |
 | Tài Liệu LeRobot | https://huggingface.co/docs/lerobot |
+
