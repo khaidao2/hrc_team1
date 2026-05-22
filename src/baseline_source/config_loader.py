@@ -14,7 +14,8 @@ def load_config(config_path: str) -> dict:
     Returns:
         Parsed config dict with ``root_path`` resolved to an absolute path.
     """
-    config_path = os.path.abspath(config_path)
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    config_path = os.path.join(base_dir, "configs", "Part_Sorting.yaml")
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
 
