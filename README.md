@@ -1,8 +1,8 @@
-# HRC2026 Team 3
+# HRC2026 Team 1
 
 Global Humanoid Robot Challenge 2026 — Vòng Giả Lập (Simulation Round)
 Robot Walker S2 | NVIDIA Isaac Sim 5.1 | UBTECH Competition
-Đội 3 — Trại Huấn Luyện UEL x BA x AILab
+Đội 1 — Trại Huấn Luyện UEL x BA x AILab
 
 ## 1. Khởi Động Nhanh (Quick Start)
 
