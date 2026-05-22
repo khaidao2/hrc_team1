@@ -1,0 +1,51 @@
+{
+  "frame_id": 128,
+  "timestamp": 12.833,
+  "camera_name": "front_rgbd",
+  "model_version": "yolov8n_hrc2026_v1",
+  "inference_latency_ms": 18.4,
+  "objects": [
+    {
+      "object_id": "track_001",
+      "class_id": "workpiece_A",
+      "confidence": 0.92,
+      "bbox_xyxy": [345, 210, 420, 292],
+      "mask_quality": 0.86,
+      "centroid_px": [382.5, 251.0],
+      "centroid_camera_m": [0.12, -0.08, 0.74],
+      "pose_base": {
+        "position_m": [0.48, -0.16, 0.83],
+        "quaternion_xyzw": [0.0, 0.0, 0.707, 0.707]
+      },
+      "velocity_px_per_frame": [0.0, 0.0],
+      "velocity_base_m_per_s": [0.0, 0.0, 0.0],
+      "grasp_hint": {
+        "approach_axis": "z_down",
+        "grasp_width_m": 0.045,
+        "yaw_rad": 1.57
+      },
+      "failure_reason": null
+    },
+    {
+      "object_id": "track_002",
+      "class_id": "workpiece_B",
+      "confidence": 0.87,
+      "bbox_xyxy": [150, 300, 230, 385],
+      "mask_quality": 0.81,
+      "centroid_px": [190.0, 342.5],
+      "centroid_camera_m": [-0.09, 0.05, 0.68],
+      "pose_base": {
+        "position_m": [0.31, 0.12, 0.79],
+        "quaternion_xyzw": [0.0, 0.0, 0.383, 0.924]
+      },
+      "velocity_px_per_frame": [0.0, 0.0],
+      "velocity_base_m_per_s": [0.0, 0.0, 0.0],
+      "grasp_hint": {
+        "approach_axis": "z_down",
+        "grasp_width_m": 0.048,
+        "yaw_rad": 0.39
+      },
+      "failure_reason": null
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "description": "Người 3 nhận verified_perception_output.json từ Người 2, tạo motion plan chi tiết cho tay robot",
+    "planner": "person_3",
+    "planned_at": 12.860,
+    "source_frame_id": 128,
+    "task_id": "task1_desktop_sorting",
+    "arm": "right"
+  },
+  "plan_summary": {
+    "total_primitives": 2,
+    "estimated_duration_s": 12.4,
+    "status": "ready_to_execute"
+  },
+  "primitives": [
+    {
+      "step_id": 1,
+      "primitive": "pick_place_workpiece",
+      "object_id": "track_001",
+      "class_id": "workpiece_A",
+      "target_bin": "bin_A",
+      "preconditions": {
+        "confidence_min": 0.70,
+        "object_reachable": true,
+        "bin_reachable": true,
+        "gripper_open": true
+      },
+      "waypoints": [
+        {
+          "name": "pre_grasp",
+          "pose_base": {
+            "position_m": [0.48, -0.16, 0.93],
+            "quaternion_xyzw": [0.0, 0.0, 0.707, 0.707]
+          },
+          "gripper": "open",
+          "speed": "normal"
+        },
+        {
+          "name": "grasp",
+          "pose_base": {
+            "position_m": [0.48, -0.16, 0.845],
+            "quaternion_xyzw": [0.0, 0.0, 0.707, 0.707]
+          },
+          "gripper": "close",
+          "grasp_width_m": 0.045,
+          "speed": "slow"
+        },
+        {
+          "name": "lift",
+          "pose_base": {
+            "position_m": [0.48, -0.16, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.707, 0.707]
+          },
+          "gripper": "hold",
+          "speed": "normal"
+        },
+        {
+          "name": "pre_place",
+          "pose_base": {
+            "position_m": [0.65, -0.30, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "hold",
+          "speed": "normal"
+        },
+        {
+          "name": "place",
+          "pose_base": {
+            "position_m": [0.65, -0.30, 0.85],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "open",
+          "speed": "slow"
+        },
+        {
+          "name": "retreat",
+          "pose_base": {
+            "position_m": [0.65, -0.30, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "open",
+          "speed": "normal"
+        }
+      ],
+      "success_check": {
+        "object_in_correct_bin": true,
+        "gripper_empty": true,
+        "no_collision": true
+      },
+      "recovery": {
+        "strategy": "retry_with_alternate_grasp_once",
+        "fallback": "skip_and_log"
+      },
+      "estimated_duration_s": 5.8
+    },
+    {
+      "step_id": 2,
+      "primitive": "pick_place_workpiece",
+      "object_id": "track_002",
+      "class_id": "workpiece_B",
+      "target_bin": "bin_B",
+      "preconditions": {
+        "confidence_min": 0.70,
+        "object_reachable": true,
+        "bin_reachable": true,
+        "gripper_open": true
+      },
+      "waypoints": [
+        {
+          "name": "pre_grasp",
+          "pose_base": {
+            "position_m": [0.31, 0.12, 0.90],
+            "quaternion_xyzw": [0.0, 0.0, 0.383, 0.924]
+          },
+          "gripper": "open",
+          "speed": "normal"
+        },
+        {
+          "name": "grasp",
+          "pose_base": {
+            "position_m": [0.31, 0.12, 0.805],
+            "quaternion_xyzw": [0.0, 0.0, 0.383, 0.924]
+          },
+          "gripper": "close",
+          "grasp_width_m": 0.048,
+          "speed": "slow",
+          "note": "yaw_near_gimbal_lock flag từ Người 2 — dùng yaw_rad=0.39 từ grasp_hint"
+        },
+        {
+          "name": "lift",
+          "pose_base": {
+            "position_m": [0.31, 0.12, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.383, 0.924]
+          },
+          "gripper": "hold",
+          "speed": "normal"
+        },
+        {
+          "name": "pre_place",
+          "pose_base": {
+            "position_m": [0.65, 0.25, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "hold",
+          "speed": "normal"
+        },
+        {
+          "name": "place",
+          "pose_base": {
+            "position_m": [0.65, 0.25, 0.85],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "open",
+          "speed": "slow"
+        },
+        {
+          "name": "retreat",
+          "pose_base": {
+            "position_m": [0.65, 0.25, 0.98],
+            "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+          },
+          "gripper": "open",
+          "speed": "normal"
+        }
+      ],
+      "success_check": {
+        "object_in_correct_bin": true,
+        "gripper_empty": true,
+        "no_collision": true
+      },
+      "recovery": {
+        "strategy": "retry_with_alternate_grasp_once",
+        "fallback": "skip_and_log"
+      },
+      "estimated_duration_s": 6.6
+    }
+  ],
+  "primitive_result_template": {
+    "_comment": "Người 3 điền vào sau khi execute mỗi primitive",
+    "primitive_name": "",
+    "success": null,
+    "elapsed_s": null,
+    "retry_count": 0,
+    "failure_reason": null,
+    "metrics": {
+      "position_error_m": null,
+      "orientation_error_deg": null,
+      "object_in_target": null,
+      "drop_detected": null
+    }
+  }
+}

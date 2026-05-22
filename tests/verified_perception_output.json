@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "description": "Người 2 verify output từ Người 1 (YOLO), annotate quality flags, và quyết định object nào đủ tin cậy để đưa sang Planner (Người 3)",
+    "verified_by": "person_2",
+    "verified_at": 12.850,
+    "source_frame_id": 128,
+    "source_model_version": "yolov8n_hrc2026_v1"
+  },
+  "verification_summary": {
+    "total_detections": 2,
+    "passed": 2,
+    "rejected": 0,
+    "warnings": 1,
+    "scene_status": "ready",
+    "note": "Tất cả object đều pass threshold. obj track_002 có yaw gần gimbal lock, planner cần dùng grasp_hint.yaw_rad thay vì tính lại từ quaternion."
+  },
+  "objects": [
+    {
+      "object_id": "track_001",
+      "class_id": "workpiece_A",
+      "confidence": 0.92,
+      "verification": {
+        "status": "pass",
+        "confidence_ok": true,
+        "pose_reachable": true,
+        "pose_in_workspace": true,
+        "occlusion_level": "none",
+        "depth_valid": true,
+        "flags": []
+      },
+      "pose_base": {
+        "position_m": [0.48, -0.16, 0.83],
+        "quaternion_xyzw": [0.0, 0.0, 0.707, 0.707]
+      },
+      "grasp_hint": {
+        "approach_axis": "z_down",
+        "grasp_width_m": 0.045,
+        "yaw_rad": 1.57
+      },
+      "priority_score": 0.91,
+      "recommended_action": "pick_and_place",
+      "target_bin": "bin_A"
+    },
+    {
+      "object_id": "track_002",
+      "class_id": "workpiece_B",
+      "confidence": 0.87,
+      "verification": {
+        "status": "pass",
+        "confidence_ok": true,
+        "pose_reachable": true,
+        "pose_in_workspace": true,
+        "occlusion_level": "partial",
+        "depth_valid": true,
+        "flags": ["yaw_near_gimbal_lock"]
+      },
+      "pose_base": {
+        "position_m": [0.31, 0.12, 0.79],
+        "quaternion_xyzw": [0.0, 0.0, 0.383, 0.924]
+      },
+      "grasp_hint": {
+        "approach_axis": "z_down",
+        "grasp_width_m": 0.048,
+        "yaw_rad": 0.39
+      },
+      "priority_score": 0.74,
+      "recommended_action": "pick_and_place",
+      "target_bin": "bin_B"
+    }
+  ],
+  "rejected_objects": [],
+  "planner_instructions": {
+    "pick_order": ["track_001", "track_002"],
+    "fallback_policy": "skip_and_log",
+    "confidence_threshold_used": 0.70,
+    "workspace_bounds_used": {
+      "x_min": 0.20, "x_max": 0.75,
+      "y_min": -0.40, "y_max": 0.40,
+      "z_min": 0.70, "z_max": 1.10
+    }
+  }
+}
