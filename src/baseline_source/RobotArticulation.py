@@ -4,7 +4,7 @@ from isaacsim.core.utils.types import ArticulationActions
 import torch
 import numpy as np
 from isaacsim.sensors.camera import Camera
-from .DualArmIK import DualArmIK
+from DualArmIK import DualArmIK
 
 class RobotArticulation:
     """具有articulation属性的机器人类，提供控制接口"""
