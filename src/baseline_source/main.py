@@ -218,12 +218,8 @@ def main(
     except KeyboardInterrupt:
         logger.info("[main] Interrupted by user")
     finally:
-        data_logger.close()
-        try:
-            kit.close()
-        except Exception:
-            pass
-        logger.info("[main] Shutdown complete")
+      data_logger.close()
+      logger.info("[main] Shutdown complete")
 
     return results
 
