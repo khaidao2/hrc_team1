@@ -554,7 +554,7 @@ class IsaacSimRobotInterface:
 
     def initialize_ik(self, urdf_path: str):
         """Initialize Pinocchio IK solver and build joint index mapping"""
-        from source.DualArmIK import DualArmIK
+        from DualArmIK import DualArmIK
         logger.info(f"Initializing DualArmIK, using URDF: {urdf_path}")
         self.ik_solver = DualArmIK(urdf_path)
         logger.info("DualArmIK initialized successfully, building joint index mapping...")

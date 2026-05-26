@@ -1,141 +1,284 @@
-"""Ubtech_sim Simulation Entry Point.
-
-Launch Isaac Sim, load task config, build scene, and run the grasp control loop.
 """
-from isaacsim import SimulationApp
+main.py – HRC2026 Task 1 Role 3
+================================
+Entry point để chạy Task 1 pick-place trong Isaac Sim workspace.
 
-CONFIG = {
-    "width": 1280,
-    "height": 720,
-    "headless": False,
-}
+Cách dùng (từ repo root):
+    python src/task1/main.py
+    python src/task1/main.py --plans tests/mock_action_plans_task1.json
+    python src/task1/main.py --headless
 
-kit = SimulationApp(launch_config=CONFIG)
+Hoặc paste vào cuối main.py của workspace (sau robot.initialize()):
+    from src.task1.task1_runner import run_task1
+    run_task1(robot, world)
+"""
 
-# Isaac Sim modules must be imported after SimulationApp is created
-from isaacsim.core.api import World
-import omni
-import omni.replicator.core as rep
+from __future__ import annotations
+
+import argparse
+import logging
 import os
-import numpy as np
+import sys
+from pathlib import Path
 
-from source.config_loader import load_config, apply_scatter_config
-from source.SceneBuilder import SceneBuilder
-from source.RobotArticulation import RobotArticulation
-from source.DataLogger import DataLogger
-from source.coordinate_utils import CoordinateTransform
-from source.grasp_planner import GraspPlanner
+# ── Path setup ────────────────────────────────────────────────────────────────
+_HERE = Path(__file__).parent.resolve()       # src/task1/
+_REPO_ROOT = _HERE.parent.parent.resolve()    # repo root
 
-# ── 1. Configuration ─────────────────────────────────────────────────
-config_path = os.path.join(os.path.dirname(__file__), "config/Part_Sorting.yaml")
-cfg = load_config(config_path)
-grasp_cfg = cfg.get("grasp", {})
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
 
-# ── 2. Stage & World ─────────────────────────────────────────────────
-omni.usd.get_context().open_stage(
-    os.path.join(cfg["root_path"], cfg["scene_usd"])
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
 )
-world = World(
-    stage_units_in_meters=1.0,
-    physics_dt=1.0 / 60.0,
-    rendering_dt=1.0 / 20.0,
-)
-world.initialize_physics()
+logger = logging.getLogger(__name__)
 
-# ── 3. Data Logger ───────────────────────────────────────────────────
-base_dir = os.path.dirname(__file__)
-data_logger = DataLogger(
-    enabled=True,
-    csv_path=os.path.join(base_dir, "poses.csv"),
-    camera_enabled=False,
-    camera_hdf5_path=os.path.join(base_dir, "camera_data.hdf5"),
-)
+# ── Default paths ─────────────────────────────────────────────────────────────
+DEFAULT_PLANS_PATH = str(_REPO_ROOT / "tests" / "mock_action_plans_task1.json")
+DEFAULT_URDF_PATH  = "/home/ubuntu/hrc2026_workspace/assets/resources/s2.urdf"
+DEFAULT_TASK_CFG   = str(_REPO_ROOT / "configs" / "Part_Sorting.yaml")
+DEFAULT_LOG_DIR    = str(_REPO_ROOT / "logs" / "task1")
+DEFAULT_PRIM_PATH  = "/Root/Ref_Xform/Ref"
 
-# ── 4. Scene (scatter area → build → physics settle) ────────────────
-scene = SceneBuilder(cfg, data_logger=data_logger)
-apply_scatter_config(cfg)
 
-scene.build_all()
-rep.orchestrator.step()
-print("[Init] 场景物体已创建并 scatter，开始物理稳定...")
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-world.play()
-settle_time = grasp_cfg.get("settle_time", 2.0)
-settle_steps = int(settle_time / world.get_physics_dt())
-for _ in range(settle_steps):
-    world.step(render=False)
-print(f"[Init] 物理稳定完成 ({settle_time}s, {settle_steps} steps)")
+def _print_summary(results: list) -> None:
+    total   = len(results)
+    success = sum(1 for r in results if r.status == "success")
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("  TASK 1 SUMMARY")
+    logger.info("=" * 60)
+    logger.info(f"  Total: {total}  Success: {success}  Failure: {total - success}")
+    if total > 0:
+        logger.info(f"  Success rate: {success / total * 100:.1f}%")
+    for r in results:
+        tag    = "✓" if r.status == "success" else "✗"
+        reason = f"  ({r.failure_reason})" if r.failure_reason else ""
+        logger.info(f"  {tag} {r.object_id}{reason}  retry={r.retry_count}  dur={r.duration_s:.2f}s")
+    logger.info("=" * 60)
 
-# ── 5. Query Part Poses ──────────────────────────────────────────────
-part_poses = scene.get_parts_world_poses()
-print(f"[Init] 查询到 {len(part_poses)} 个零件")
-for pp in part_poses:
-    print(f"  {pp['prim_path']}: pos={pp['position']}")
 
-# ── 6. Robot ─────────────────────────────────────────────────────────
-world.pause()
-scene.build_robot()
-robot = RobotArticulation(prim_path="/Root/Ref_Xform/Ref", name="walkerS2")
-robot.initialize()
-print("[Init] 机器人已加入场景并设置初始关节角（物理暂停中）")
-world.play()
+# ── Isaac Sim bootstrap ───────────────────────────────────────────────────────
 
-for _ in range(10):
-    world.step(render=False)
+def _init_isaac_sim(task_cfg_path: str, headless: bool, prim_path: str, urdf_path: str):
+    """Launch Isaac Sim, load Part_Sorting scene, initialize robot.
 
-# ── 7. IK & Coordinate Transform ────────────────────────────────────
-urdf_path = os.path.join(cfg["root_path"], "s2.urdf")
-robot.initialize_ik(urdf_path)
+    Returns (kit, world, robot, data_logger).
+    """
+    import yaml
 
-js = robot.get_joint_states()
-if js is not None:
-    robot.ik_solver.sync_joint_positions(js["names"], js["positions"][0])
+    # 1. SimulationApp – must be first Isaac import
+    from isaacsim import SimulationApp
+    logger.info("[main] Step 1: Creating SimulationApp (headless=%s)...", headless)
+    kit = SimulationApp({"headless": headless, "width": 1280, "height": 720})
+    logger.info("[main] SimulationApp ready")
 
-compensation_matrix = np.array([
-    [9.99999e-01, -1.11400e-03,  1.16200e-03, -9.64000e-04],
-    [-2.00000e-05,  7.13609e-01,  7.00544e-01, -9.59927e-01],
-    [-1.61000e-03, -7.00544e-01,  7.13608e-01,  6.56540e-01],
-    [0.00000e+00,  0.00000e+00,  0.00000e+00,  1.00000e+00]
-], dtype=np.float64)
+    # 2. Load scene USD – resolve root_path to absolute
+    import omni.usd as omni_usd
+    with open(task_cfg_path, "r") as f:
+        task_cfg = yaml.safe_load(f)
 
-coord_transform = CoordinateTransform.from_torso_link(ik_solver=robot.ik_solver)
-for _ in range(10):
-    coord_transform.verify_ee_alignment(robot.ik_solver)
+    # root_path in yaml may be relative; resolve against known assets location
+    ASSETS_ROOT = "/home/ubuntu/hrc2026_workspace/assets/resources"
+    raw_root = task_cfg.get("root_path", "")
+    if not os.path.isabs(raw_root) or not os.path.isdir(raw_root):
+        task_cfg["root_path"] = ASSETS_ROOT
+        logger.info("[main] root_path overridden to: %s", ASSETS_ROOT)
 
-# ── 8. Grasp Planning ───────────────────────────────────────────────
-planner = GraspPlanner(grasp_cfg, robot, coord_transform)
-planner.compute_grasp_target(part_poses)
+    scene_usd = os.path.join(task_cfg["root_path"], task_cfg.get("scene_usd", ""))
+    if not os.path.isfile(scene_usd):
+        raise FileNotFoundError(f"Scene USD not found: {scene_usd}")
 
-# ── 9. Callbacks ─────────────────────────────────────────────────────
-def robot_control_callback(step_size):
-    planner.update_active_target()
-    left_target, right_target, rot_weight = planner.get_control_targets()
-    robot.control_dual_arm_ik(
-        step_size,
-        left_target_xyzrpy=left_target,
-        right_target_xyzrpy=right_target,
-        rot_weight=rot_weight,
+    logger.info("[main] Step 2: Loading scene USD: %s", scene_usd)
+    omni_usd.get_context().open_stage(scene_usd)
+    logger.info("[main] Scene USD loaded")
+
+    # 3. World
+    from isaacsim.core.api import World
+    logger.info("[main] Step 3: Creating World...")
+    world = World(
+        stage_units_in_meters=1.0,
+        physics_dt=1.0 / 60.0,
+        rendering_dt=1.0 / 20.0,
     )
-    # planner.log_debug()
+    world.initialize_physics()
+    logger.info("[main] World initialized")
+
+    # 4. SceneBuilder
+    logger.info("[main] Step 4: Building scene...")
+    src_path = str(_REPO_ROOT / "src")
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
+    from baseline_source.SceneBuilder import SceneBuilder
+    from baseline_source.DataLogger import DataLogger
+
+    data_logger = DataLogger(enabled=False, csv_path="", camera_enabled=False, camera_hdf5_path="")
+    scene = SceneBuilder(task_cfg, data_logger=data_logger)
+    scene.build_all()
+    scene.build_robot()
+    actual_prim_path = getattr(scene, "robot_prim_path", None) or prim_path
+    logger.info("[main] Scene built")
+    logger.info("[main] Robot prim path: %s", actual_prim_path)
+
+    # 5. Play + warmup
+    world.play()
+    for _ in range(10):
+        world.step(render=False)
+    logger.info("[main] Physics warmed up (10 steps)")
+
+    # 6. Robot interface
+    logger.info("[main] Step 5: Initializing robot interface...")
+    try:
+        from baseline_source.isaac_sim_robot_interface import IsaacSimRobotInterface
+    except ImportError:
+        from isaac_sim_robot_interface import IsaacSimRobotInterface
+
+    robot = IsaacSimRobotInterface(
+        prim_path=actual_prim_path,
+        name="walkerS2",
+        world=world,
+        urdf_path=urdf_path,
+    )
+    robot.initialize()
+    logger.info("[main] Robot interface ready")
+
+    return kit, world, robot, data_logger
 
 
-def score_input_record_callback(step_size):
-    scene.get_target_object_transforms(step_size)
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main(
+    plans_path: str = DEFAULT_PLANS_PATH,
+    task_cfg_path: str = DEFAULT_TASK_CFG,
+    urdf_path: str = DEFAULT_URDF_PATH,
+    log_dir: str = DEFAULT_LOG_DIR,
+    prim_path: str = DEFAULT_PRIM_PATH,
+    headless: bool = False,
+    side: str = "right",
+) -> list:
+    """Run Task 1 pick-place in Isaac Sim. Returns list of PrimitiveResult."""
+    logger.info("[main] HRC2026 Task 1 Role 3")
+    logger.info("[main] plans=%s", plans_path)
+    logger.info("[main] task_cfg=%s", task_cfg_path)
+
+    os.makedirs(log_dir, exist_ok=True)
+
+    kit, world, robot, data_logger = _init_isaac_sim(
+        task_cfg_path=task_cfg_path,
+        headless=headless,
+        prim_path=prim_path,
+        urdf_path=urdf_path,
+    )
+
+    results = []
+    try:
+        # Run Task 1 pick-place – pass IsaacSimRobotInterface directly to RealMotionInterface
+        # (bypasses RobotArticulationAdapter which expects RobotArticulation, not IsaacSimRobotInterface)
+        from real_motion_interface import RealMotionInterface
+        from motion import MotionPrimitiveRunner
+        from motion_utils import DEFAULT_PARAMS
+        import json
+
+        interface = RealMotionInterface(
+            robot_interface=robot,
+            world=world,
+            side=side,
+            ik_steps=150,
+        )
+        runner = MotionPrimitiveRunner(
+            interface=interface,
+            params=DEFAULT_PARAMS,
+            log_dir=log_dir,
+            dry_run=False,
+        )
+
+        if not os.path.isfile(plans_path):
+            logger.error("[main] plans not found: %s", plans_path)
+            return []
+
+        with open(plans_path, encoding="utf-8") as f:
+            plans = json.load(f)
+
+        logger.info("[main] Running %d plans...", len(plans))
+        for plan in plans:
+            result = runner.pick_place(plan)
+            results.append(result)
+            tag = "SUCCESS" if result.status == "success" else f"FAIL({result.failure_reason})"
+            logger.info("  %s: %s  dur=%.2fs", result.object_id, tag, result.duration_s)
+
+        _print_summary(results)
+
+        # Keep sim open until window is closed
+        logger.info("[main] Task done. Running sim loop (close window to exit)...")
+        while kit.is_running():
+            world.step(render=True)
+
+    except KeyboardInterrupt:
+        logger.info("[main] Interrupted by user")
+    finally:
+        data_logger.close()
+        try:
+            kit.close()
+        except Exception:
+            pass
+        logger.info("[main] Shutdown complete")
+
+    return results
 
 
-def camera_images_callback(step):
-    camera_data = robot.get_cameras_images(step)
-    data_logger.log_camera_rgb(camera_data)
+# ── CLI ───────────────────────────────────────────────────────────────────────
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="HRC2026 Task 1 – Isaac Sim runner")
+    parser.add_argument(
+        "--plans",
+        default=DEFAULT_PLANS_PATH,
+        help="Path to action plans JSON (default: tests/mock_action_plans_task1.json)",
+    )
+    parser.add_argument(
+        "--task-cfg",
+        default=DEFAULT_TASK_CFG,
+        help="Path to Part_Sorting.yaml (default: Ubtech_sim/config/Part_Sorting.yaml)",
+    )
+    parser.add_argument(
+        "--urdf",
+        default=DEFAULT_URDF_PATH,
+        help="Path to s2.urdf for IK solver (default: assets/resources/s2.urdf)",
+    )
+    parser.add_argument(
+        "--log-dir",
+        default=DEFAULT_LOG_DIR,
+        help="Output directory for logs (default: logs/task1/)",
+    )
+    parser.add_argument(
+        "--prim-path",
+        default=DEFAULT_PRIM_PATH,
+        help="USD prim path of robot (default: /Root/Ref_Xform/Ref)",
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="Run without GUI",
+    )
+    parser.add_argument(
+        "--side",
+        default="right",
+        choices=["right", "left"],
+        help="Arm side for pick-place (default: right)",
+    )
+    args = parser.parse_args()
 
-world.add_physics_callback("robot_control", robot_control_callback)
-world.add_physics_callback("score_input_record", score_input_record_callback)
-world.add_physics_callback("foam_sync", lambda dt: scene.sync_foam_to_box())
-world.add_render_callback("camera_images", camera_images_callback)
-
-# ── 10. Main Loop ────────────────────────────────────────────────────
-try:
-    while kit.is_running():
-        world.step()
-finally:
-    data_logger.close()
+    main(
+        plans_path=args.plans,
+        task_cfg_path=args.task_cfg,
+        urdf_path=args.urdf,
+        log_dir=args.log_dir,
+        prim_path=args.prim_path,
+        headless=args.headless,
+        side=args.side,
+    )

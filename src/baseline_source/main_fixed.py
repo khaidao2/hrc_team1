@@ -19,12 +19,12 @@ import omni.replicator.core as rep
 import os
 import numpy as np
 
-from source.config_loader import load_config, apply_scatter_config
-from source.SceneBuilder import SceneBuilder
-from source.RobotArticulation import RobotArticulation
-from source.DataLogger import DataLogger
-from source.coordinate_utils import CoordinateTransform
-from source.grasp_planner import GraspPlanner
+from config_loader import load_config, apply_scatter_config
+from SceneBuilder import SceneBuilder
+from RobotArticulation import RobotArticulation
+from DataLogger import DataLogger
+from coordinate_utils import CoordinateTransform
+from grasp_planner import GraspPlanner
 
 # ── 1. Configuration ─────────────────────────────────────────────────
 config_path = os.path.join(os.path.dirname(__file__), "config/Part_Sorting.yaml")
